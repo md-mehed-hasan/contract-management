@@ -10,7 +10,12 @@ export async function GET(request) {
   if (auth) return auth;
 
   await connectDB();
-  await Contract.updateMany({ status: { $in: ['pending', 'viewed'] }, expiryDate: { $lt: new Date() } }, { status: 'expired' });
+  
+  // Run update asynchronously in background to optimize response time
+  Contract.updateMany(
+    { status: { $in: ['pending', 'viewed'] }, expiryDate: { $lt: new Date() } },
+    { status: 'expired' }
+  ).catch((err) => console.error('Failed to auto-expire contracts:', err));
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(Number(searchParams.get('page') || 1), 1);
@@ -25,7 +30,12 @@ export async function GET(request) {
   }
 
   const [contracts, total] = await Promise.all([
-    Contract.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    Contract.find(query)
+      .select('-signedFileData -signatureData')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
     Contract.countDocuments(query)
   ]);
 

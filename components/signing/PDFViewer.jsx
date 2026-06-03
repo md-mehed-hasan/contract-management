@@ -74,6 +74,7 @@ export default function PDFViewer({ contract }) {
       fabric.Object.prototype.cornerStyle = 'circle';
       fabric.Object.prototype.borderDashArray = [3, 3];
       fabric.Object.prototype.padding = 6;
+      fabric.Object.prototype.objectCaching = false;
 
       const loadingTask = pdfjsLib.getDocument(contract.pdfPreviewUrl);
       const pdf = await loadingTask.promise;
@@ -142,7 +143,6 @@ export default function PDFViewer({ contract }) {
               fill: '#172033',
               fontSize: 18,
               fontFamily: 'Arial',
-              backgroundColor: 'rgba(255,255,255,0.75)',
               selectable: true,
               hasControls: true
             });
@@ -234,23 +234,44 @@ export default function PDFViewer({ contract }) {
   };
 
   const createSignedPdfDataUrl = async () => {
+    const pdfjsLib = await import('pdfjs-dist/build/pdf');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+    const loadingTask = pdfjsLib.getDocument(contract.pdfPreviewUrl);
+    const pdf = await loadingTask.promise;
     const pdfDoc = await PDFDocument.create();
 
+    const multiplier = 3; // 3x resolution for super crisp PDF output
+
     for (const [pageNumber, pageInfo] of pageRefs.current.entries()) {
-      const pdfCanvas = pdfCanvases.current.get(pageNumber);
+      const page = await pdf.getPage(pageNumber);
+      const originalViewport = page.getViewport({ scale: 1 });
+      const displayScale = pageInfo.width / originalViewport.width;
+      const highResViewport = page.getViewport({ scale: displayScale * multiplier });
+
+      const highResPdfCanvas = document.createElement('canvas');
+      highResPdfCanvas.width = highResViewport.width;
+      highResPdfCanvas.height = highResViewport.height;
+
+      await page.render({
+        canvasContext: highResPdfCanvas.getContext('2d'),
+        viewport: highResViewport
+      }).promise;
+
       const fabricCanvas = fabricCanvases.current.get(pageNumber);
+      const highResFabricCanvas = fabricCanvas.toCanvasElement(multiplier);
+
       const combined = document.createElement('canvas');
-      combined.width = pageInfo.width;
-      combined.height = pageInfo.height;
+      combined.width = highResViewport.width;
+      combined.height = highResViewport.height;
       const ctx = combined.getContext('2d');
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, combined.width, combined.height);
-      ctx.drawImage(pdfCanvas, 0, 0);
-      ctx.drawImage(fabricCanvas.toCanvasElement(), 0, 0);
+      ctx.drawImage(highResPdfCanvas, 0, 0);
+      ctx.drawImage(highResFabricCanvas, 0, 0);
 
       const png = await pdfDoc.embedPng(combined.toDataURL('image/png'));
-      const page = pdfDoc.addPage([pageInfo.width, pageInfo.height]);
-      page.drawImage(png, { x: 0, y: 0, width: pageInfo.width, height: pageInfo.height });
+      const newPage = pdfDoc.addPage([pageInfo.width, pageInfo.height]);
+      newPage.drawImage(png, { x: 0, y: 0, width: pageInfo.width, height: pageInfo.height });
     }
 
     const bytes = await pdfDoc.save();

@@ -10,17 +10,24 @@ export default function SignaturePad({ open, onClose, onInsert }) {
   const [tab, setTab] = useState('draw');
   const [typed, setTyped] = useState('');
   const [color, setColor] = useState('#172033');
+  const [fontFamily, setFontFamily] = useState('Caveat');
 
   useEffect(() => {
-    if (!open || !canvasRef.current) return;
+    if (!open || tab !== 'draw' || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = color;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
-  }, [open, tab, color]);
+    ctx.strokeStyle = color;
+  }, [open, tab]);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = color;
+  }, [color]);
 
   const point = (event) => {
     const canvas = canvasRef.current;
@@ -62,10 +69,8 @@ export default function SignaturePad({ open, onClose, onInsert }) {
     canvas.width = 560;
     canvas.height = 160;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = color;
-    ctx.font = '52px Georgia, serif';
+    ctx.font = `56px "${fontFamily}", cursive`;
     ctx.fillText(typed.trim(), 32, 95);
     onInsert(canvas.toDataURL('image/png'));
     onClose();
@@ -134,9 +139,43 @@ export default function SignaturePad({ open, onClose, onInsert }) {
         )}
 
         {tab === 'type' && (
-          <div className="space-y-3">
-            <input value={typed} onChange={(event) => setTyped(event.target.value)} placeholder="Type your signature" className="w-full rounded-md border border-slate-300 px-3 py-2 text-2xl outline-none focus:border-brand-500" />
-            <button onClick={insertTyped} type="button" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+          <div className="space-y-4">
+            <input
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+              placeholder="Type your signature"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-2xl outline-none focus:border-brand-500"
+            />
+            
+            <div className="flex gap-2">
+              {[
+                { name: 'Handwriting', value: 'Caveat' },
+                { name: 'Cursive', value: 'Dancing Script' },
+                { name: 'Calligraphy', value: 'Great Vibes' }
+              ].map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => setFontFamily(f.value)}
+                  className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-all ${
+                    fontFamily === f.value ? 'border-brand-600 bg-brand-50 text-brand-700 font-semibold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                  style={{ fontFamily: f.value }}
+                >
+                  {f.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Live Preview Box */}
+            <div 
+              className="flex h-32 w-full items-center justify-center rounded-md border border-slate-200 bg-slate-50 p-4 text-center text-4xl overflow-hidden"
+              style={{ fontFamily, color }}
+            >
+              {typed.trim() || 'Signature Preview'}
+            </div>
+
+            <button onClick={insertTyped} type="button" className="w-full rounded-md bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700">
               Insert Signature
             </button>
           </div>

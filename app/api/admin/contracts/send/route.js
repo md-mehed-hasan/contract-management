@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 import { requireAdmin } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
 import Contract from '@/lib/models/Contract';
-import Document from '@/lib/models/Document';
 import Template from '@/lib/models/Template';
 import { sendContractEmail } from '@/lib/email';
 import { sendContractSchema } from '@/lib/validation';
@@ -18,23 +17,21 @@ export async function POST(request) {
   try {
     await connectDB();
     const body = sendContractSchema.parse(await request.json());
-    const source = body.templateId ? await Template.findById(body.templateId) : await Document.findById(body.documentId);
+    const source = await Template.findById(body.templateId);
 
     if (!source) {
-      return NextResponse.json({ success: false, message: 'Selected document or template was not found' }, { status: 404 });
+      return NextResponse.json({ success: false, message: 'Selected template was not found' }, { status: 404 });
     }
 
     const token = generateToken();
     const expiryDate = body.expiryDate ? new Date(body.expiryDate) : defaultExpiryDate();
-    const documentType = source.documentType || source.templateType;
+    const documentType = source.templateType;
     const contract = await Contract.create({
       token,
       documentName: source.name,
       documentType,
       originalFileUrl: source.originalFileUrl,
-      originalFilePublicId: source.originalFilePublicId,
       pdfPreviewUrl: source.pdfPreviewUrl,
-      pdfPreviewPublicId: source.pdfPreviewPublicId,
       clientName: body.clientName,
       clientEmail: body.clientEmail,
       expiryDate,

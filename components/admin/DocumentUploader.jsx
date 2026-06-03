@@ -12,7 +12,7 @@ export default function DocumentUploader({ endpoint = '/api/admin/documents/uplo
   const submit = async (event) => {
     event.preventDefault();
     if (!file) {
-      toast.error('Choose a PDF, DOC, or DOCX file');
+      toast.error('Choose a PDF file');
       return;
     }
 
@@ -42,7 +42,7 @@ export default function DocumentUploader({ endpoint = '/api/admin/documents/uplo
           <label className="block text-sm font-medium text-ink">{template ? 'Template file' : 'Document file'}</label>
           <input
             type="file"
-            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept=".pdf,application/pdf"
             onChange={(event) => setFile(event.target.files?.[0] || null)}
             className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1 file:text-sm file:font-medium"
           />
@@ -55,7 +55,7 @@ export default function DocumentUploader({ endpoint = '/api/admin/documents/uplo
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
           )}
-          <p className="text-xs text-slate-500">PDF and DOCX only. Maximum file size: 10MB.</p>
+          <p className="text-xs text-slate-500">PDF supported only. Maximum file size: 10MB.</p>
         </div>
       </div>
       <button disabled={loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 mt-4">

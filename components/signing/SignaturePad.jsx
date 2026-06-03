@@ -9,6 +9,7 @@ export default function SignaturePad({ open, onClose, onInsert }) {
   const drawing = useRef(false);
   const [tab, setTab] = useState('draw');
   const [typed, setTyped] = useState('');
+  const [color, setColor] = useState('#172033');
 
   useEffect(() => {
     if (!open || !canvasRef.current) return;
@@ -16,14 +17,18 @@ export default function SignaturePad({ open, onClose, onInsert }) {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#172033';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
-  }, [open, tab]);
+  }, [open, tab, color]);
 
   const point = (event) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
+    return { x, y };
   };
 
   const start = (event) => {
@@ -59,7 +64,7 @@ export default function SignaturePad({ open, onClose, onInsert }) {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#172033';
+    ctx.fillStyle = color;
     ctx.font = '52px Georgia, serif';
     ctx.fillText(typed.trim(), 32, 95);
     onInsert(canvas.toDataURL('image/png'));
@@ -96,6 +101,15 @@ export default function SignaturePad({ open, onClose, onInsert }) {
               {label}
             </button>
           ))}
+          <div className="ml-auto flex items-center border-l border-slate-200 pl-2">
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="h-9 w-9 cursor-pointer rounded border-0 bg-transparent p-1"
+              title="Signature Color"
+            />
+          </div>
         </div>
 
         {tab === 'draw' && (
@@ -108,6 +122,9 @@ export default function SignaturePad({ open, onClose, onInsert }) {
               onPointerMove={move}
               onPointerUp={finish}
               onPointerLeave={finish}
+              style={{
+                cursor: `url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%231e293b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E") 3 20, crosshair`
+              }}
               className="h-44 w-full touch-none rounded-md border border-slate-300 bg-white"
             />
             <button onClick={insertDrawn} type="button" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">

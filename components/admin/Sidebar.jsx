@@ -6,7 +6,6 @@ import { BarChart3, FileSignature, FileText, LayoutTemplate, Send, ScrollText } 
 
 const links = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { href: '/admin/documents', label: 'Documents', icon: FileText },
   { href: '/admin/templates', label: 'Templates', icon: LayoutTemplate },
   { href: '/admin/send', label: 'Send Contract', icon: Send },
   { href: '/admin/contracts', label: 'Tracking', icon: ScrollText }

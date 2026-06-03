@@ -31,12 +31,7 @@ export default function DashboardPage() {
           <Link href="/admin/send" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-brand-200">
             <Send className="mb-4 text-brand-600" size={24} />
             <p className="font-semibold text-ink">Send Contract</p>
-            <p className="mt-1 text-sm text-slate-500">Create a signing request from any document or template.</p>
-          </Link>
-          <Link href="/admin/documents" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-brand-200">
-            <FileText className="mb-4 text-brand-600" size={24} />
-            <p className="font-semibold text-ink">Upload Document</p>
-            <p className="mt-1 text-sm text-slate-500">Store PDF, DOC, or DOCX files in Cloudinary.</p>
+            <p className="mt-1 text-sm text-slate-500">Create a signing request from a template.</p>
           </Link>
           <Link href="/admin/templates" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-brand-200">
             <LayoutTemplate className="mb-4 text-brand-600" size={24} />
@@ -54,7 +49,7 @@ export default function DashboardPage() {
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Client</th>
-                  <th className="px-4 py-3">Document</th>
+                  <th className="px-4 py-3">Template</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Sent</th>
                 </tr>

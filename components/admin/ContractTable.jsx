@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Download, Eye, RefreshCw, ShieldOff } from 'lucide-react';
+import { Download, Eye, RefreshCw, ShieldOff, MoreVertical, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ContractDetailsModal from './ContractDetailsModal';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -21,6 +21,17 @@ export default function ContractTable() {
   const [status, setStatus] = useState('all');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+
+  useEffect(() => {
+    const handleCloseDropdown = (e) => {
+      if (!e.target.closest('.action-dropdown-container')) {
+        setOpenDropdownId(null);
+      }
+    };
+    window.addEventListener('click', handleCloseDropdown);
+    return () => window.removeEventListener('click', handleCloseDropdown);
+  }, []);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({ page: String(pagination.page), limit: String(pagination.limit), status, search });
@@ -124,7 +135,7 @@ export default function ContractTable() {
           <LoadingSpinner label="Loading contracts" />
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[260px]">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
               <tr>
@@ -153,21 +164,78 @@ export default function ContractTable() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">{contract.lastOpened ? new Date(contract.lastOpened).toLocaleDateString() : '—'}</td>
                   <td className="whitespace-nowrap px-4 py-3">{contract.signedDate ? new Date(contract.signedDate).toLocaleDateString() : '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setSelected(contract)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100" title="View details">
-                        <Eye size={16} />
+                  <td className="px-4 py-3 relative">
+                    <div className="relative inline-block text-left action-dropdown-container">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(openDropdownId === contract._id ? null : contract._id);
+                        }}
+                        className="rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none"
+                        title="Actions"
+                      >
+                        <MoreVertical size={16} />
                       </button>
-                      <button onClick={() => action(`/api/admin/contracts/${contract._id}/resend`)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100" title="Resend email">
-                        <RefreshCw size={16} />
-                      </button>
-                      <button onClick={() => action(`/api/admin/contracts/${contract._id}/revoke`, 'DELETE')} className="rounded-md p-2 text-rose-600 hover:bg-rose-50" title="Revoke token">
-                        <ShieldOff size={16} />
-                      </button>
-                      {contract.signedPdfUrl && (
-                        <a href={contract.signedPdfUrl} className="rounded-md p-2 text-emerald-700 hover:bg-emerald-50" title="Download signed PDF">
-                          <Download size={16} />
-                        </a>
+                      
+                      {openDropdownId === contract._id && (
+                        <div className="absolute right-0 z-30 mt-1 w-48 origin-top-right rounded-md border border-slate-200 bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                setSelected(contract);
+                                setOpenDropdownId(null);
+                              }}
+                              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                            >
+                              <Eye size={16} className="text-slate-400" />
+                              View details
+                            </button>
+                            {contract.status !== 'revoked' && (
+                              <button
+                                onClick={() => {
+                                  action(`/api/admin/contracts/${contract._id}/resend`);
+                                  setOpenDropdownId(null);
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                              >
+                                <RefreshCw size={16} className="text-slate-400" />
+                                Resend email
+                              </button>
+                            )}
+                            {contract.status !== 'revoked' && (
+                              <button
+                                onClick={() => {
+                                  action(`/api/admin/contracts/${contract._id}/revoke`, 'DELETE');
+                                  setOpenDropdownId(null);
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+                              >
+                                <ShieldOff size={16} className="text-rose-400" />
+                                Cancel Contract
+                              </button>
+                            )}
+                            {contract.signedPdfUrl && (
+                              <a
+                                href={contract.signedPdfUrl}
+                                onClick={() => setOpenDropdownId(null)}
+                                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 transition-colors"
+                              >
+                                <Download size={16} className="text-emerald-500" />
+                                Download PDF
+                              </a>
+                            )}
+                            <button
+                              onClick={() => {
+                                action(`/api/admin/contracts/${contract._id}`, 'DELETE');
+                                setOpenDropdownId(null);
+                              }}
+                              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+                            >
+                              <Trash2 size={16} className="text-rose-400" />
+                              Delete Contract
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </td>

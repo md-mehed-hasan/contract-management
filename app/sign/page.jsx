@@ -32,7 +32,7 @@ function SignContent() {
 
   return (
     <main className="min-h-screen bg-mist">
-      <header className="border-b border-slate-200 bg-white px-4 py-4">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4 shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-600 text-white">
             <FileSignature size={20} />

@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { requireAdmin } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
 import Template from '@/lib/models/Template';
-import { createDocumentFromUpload } from '@/lib/documentService';
+import { createTemplateFromUpload } from '@/lib/documentService';
 
 export async function GET(request) {
   const auth = requireAdmin(request);
@@ -22,8 +22,7 @@ export async function POST(request) {
   try {
     await connectDB();
     const formData = await request.formData();
-    const template = await createDocumentFromUpload(formData.get('file'), {
-      isTemplate: true,
+    const template = await createTemplateFromUpload(formData.get('file'), {
       description: formData.get('description') || ''
     });
     return NextResponse.json({ success: true, template }, { status: 201 });

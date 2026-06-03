@@ -31,6 +31,24 @@ export default function PDFViewer({ contract }) {
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [signedUrl, setSignedUrl] = useState(contract.signedPdfUrl || '');
+  const [activeObject, setActiveObject] = useState(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.key === 'Backspace' || e.key === 'Delete') && activeObject) {
+        if (!activeObject.isEditing) {
+          const canvas = activeObject.canvas;
+          if (canvas) {
+            canvas.remove(activeObject);
+            canvas.discardActiveObject();
+            setActiveObject(null);
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeObject]);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -46,6 +64,16 @@ export default function PDFViewer({ contract }) {
       const pdfjsLib = await import('pdfjs-dist/build/pdf');
       const { fabric } = await import('fabric');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+      // Customize selection borders and corner handles globally for a premium feel
+      fabric.Object.prototype.transparentCorners = false;
+      fabric.Object.prototype.cornerColor = '#2563eb'; // brand-600
+      fabric.Object.prototype.cornerStrokeColor = '#1d4ed8'; // brand-700
+      fabric.Object.prototype.borderColor = '#3b82f6'; // brand-500
+      fabric.Object.prototype.cornerSize = 9;
+      fabric.Object.prototype.cornerStyle = 'circle';
+      fabric.Object.prototype.borderDashArray = [3, 3];
+      fabric.Object.prototype.padding = 6;
 
       const loadingTask = pdfjsLib.getDocument(contract.pdfPreviewUrl);
       const pdf = await loadingTask.promise;
@@ -94,15 +122,38 @@ export default function PDFViewer({ contract }) {
         fabricCanvas.on('mouse:down', (event) => {
           const pointer = fabricCanvas.getPointer(event.e);
           if (modeRef.current === 'text') {
-            const text = new fabric.IText('Text', {
+            // If they clicked on an existing object, just select it and switch to move mode
+            if (event.target) {
+              setMode('move');
+              if (event.target.type === 'textbox' || event.target.type === 'i-text') {
+                setTimeout(() => {
+                  fabricCanvas.setActiveObject(event.target);
+                  event.target.enterEditing();
+                  fabricCanvas.renderAll();
+                }, 50);
+              }
+              return;
+            }
+
+            const text = new fabric.Textbox('Type text here', {
               left: pointer.x,
               top: pointer.y,
+              width: 180,
               fill: '#172033',
               fontSize: 18,
               fontFamily: 'Arial',
-              backgroundColor: 'rgba(255,255,255,0.75)'
+              backgroundColor: 'rgba(255,255,255,0.75)',
+              selectable: true,
+              hasControls: true
             });
-            fabricCanvas.add(text).setActiveObject(text);
+            fabricCanvas.add(text);
+            fabricCanvas.setActiveObject(text);
+            setMode('move');
+            setTimeout(() => {
+              text.enterEditing();
+              text.selectAll();
+              fabricCanvas.renderAll();
+            }, 50);
           }
           if (modeRef.current === 'signature') {
             setSignatureOpen(true);
@@ -110,8 +161,16 @@ export default function PDFViewer({ contract }) {
           }
           if (modeRef.current === 'delete' && event.target) {
             fabricCanvas.remove(event.target);
+            setActiveObject(null);
           }
         });
+
+        const updateSelection = (e) => {
+          setActiveObject(e.selected ? e.selected[0] : null);
+        };
+        fabricCanvas.on('selection:created', updateSelection);
+        fabricCanvas.on('selection:updated', updateSelection);
+        fabricCanvas.on('selection:cleared', () => setActiveObject(null));
 
         if (savedPages[pageNumber]) {
           await new Promise((resolve) => fabricCanvas.loadFromJSON(savedPages[pageNumber], resolve));
@@ -238,8 +297,8 @@ export default function PDFViewer({ contract }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-sm">
-      <Toolbar mode={mode} setMode={setMode} onSave={saveProgress} onFinalize={finalize} saving={saving} finalizing={finalizing} />
+    <div className="rounded-lg border border-slate-200 bg-slate-100 shadow-sm relative">
+      <Toolbar mode={mode} setMode={setMode} onSave={saveProgress} onFinalize={finalize} saving={saving} finalizing={finalizing} activeObject={activeObject} setActiveObject={setActiveObject} />
       {loading && (
         <div className="p-6">
           <LoadingSpinner label="Rendering document" />

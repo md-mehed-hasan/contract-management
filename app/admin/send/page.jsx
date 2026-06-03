@@ -12,21 +12,18 @@ function formatInputDate(date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) 
 function SendContractContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [documents, setDocuments] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     clientName: '',
     clientEmail: '',
-    documentId: '',
     templateId: searchParams.get('template') || '',
     expiryDate: formatInputDate(),
     customMessage: ''
   });
 
   useEffect(() => {
-    Promise.all([fetch('/api/admin/documents').then((res) => res.json()), fetch('/api/admin/templates').then((res) => res.json())]).then(([docData, templateData]) => {
-      setDocuments(docData.documents || []);
+    fetch('/api/admin/templates').then((res) => res.json()).then((templateData) => {
       setTemplates(templateData.templates || []);
     });
   }, []);
@@ -34,9 +31,7 @@ function SendContractContent() {
   const update = (field, value) => {
     setForm((current) => ({
       ...current,
-      [field]: value,
-      ...(field === 'documentId' && value ? { templateId: '' } : {}),
-      ...(field === 'templateId' && value ? { documentId: '' } : {})
+      [field]: value
     }));
   };
 
@@ -71,17 +66,7 @@ function SendContractContent() {
             Client email
             <input required type="email" value={form.clientEmail} onChange={(event) => update('clientEmail', event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-brand-500" />
           </label>
-          <label className="space-y-1 text-sm font-medium text-ink">
-            Select document
-            <select value={form.documentId} onChange={(event) => update('documentId', event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-brand-500">
-              <option value="">Choose a document</option>
-              {documents.map((document) => (
-                <option key={document._id} value={document._id}>
-                  {document.name}
-                </option>
-              ))}
-            </select>
-          </label>
+
           <label className="space-y-1 text-sm font-medium text-ink">
             Select template
             <select value={form.templateId} onChange={(event) => update('templateId', event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-brand-500">

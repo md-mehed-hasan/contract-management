@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 import { ADMIN_EMAIL } from '@/lib/auth';
-import { uploadDataUrlToCloudinary } from '@/lib/cloudinary';
 import { sendAdminNotification, sendSignedConfirmation } from '@/lib/email';
 import { connectDB } from '@/lib/mongodb';
 import Contract from '@/lib/models/Contract';
@@ -21,12 +20,12 @@ export async function POST(request) {
     }
 
     const pdfBuffer = await ensurePdfBuffer(body.signedPdfDataUrl);
-    const upload = await uploadDataUrlToCloudinary(body.signedPdfDataUrl);
 
     contract.status = 'signed';
     contract.signedDate = new Date();
-    contract.signedPdfUrl = upload.secure_url;
-    contract.signedPdfPublicId = upload.public_id;
+    contract.signedPdfUrl = `/api/files/contracts/${contract._id}/signed`;
+    contract.signedFileData = pdfBuffer;
+    contract.signedContentType = 'application/pdf';
     contract.signatureData = body.signatureData || contract.signatureData;
     contract.activityLog.push({ type: 'signed', message: 'Client submitted final signed contract' });
     await contract.save();

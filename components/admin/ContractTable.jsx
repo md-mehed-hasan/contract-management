@@ -1,0 +1,198 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Download, Eye, RefreshCw, ShieldOff } from 'lucide-react';
+import toast from 'react-hot-toast';
+import ContractDetailsModal from './ContractDetailsModal';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+
+const statusClasses = {
+  pending: 'bg-amber-100 text-amber-700',
+  viewed: 'bg-sky-100 text-sky-700',
+  signed: 'bg-emerald-100 text-emerald-700',
+  expired: 'bg-rose-100 text-rose-700',
+  revoked: 'bg-slate-200 text-slate-700'
+};
+
+export default function ContractTable() {
+  const [contracts, setContracts] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 1 });
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams({ page: String(pagination.page), limit: String(pagination.limit), status, search });
+    return params.toString();
+  }, [pagination.page, pagination.limit, search, status]);
+
+  const loadContracts = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/admin/contracts?${queryString}`);
+    const data = await res.json();
+    if (data.success) {
+      setContracts(data.contracts);
+      setPagination(data.pagination);
+    }
+    setLoading(false);
+  }, [queryString]);
+
+  useEffect(() => {
+    loadContracts();
+  }, [loadContracts]);
+
+  const action = async (path, method = 'POST') => {
+    if (!window.confirm('Are you sure?')) return;
+    const res = await fetch(path, { method });
+    const data = await res.json();
+    if (data.success) {
+      toast.success('Action completed');
+      loadContracts();
+    } else {
+      toast.error(data.message || 'Action failed');
+    }
+  };
+
+  const exportCsv = () => {
+    const headers = ['Contract ID', 'Client Name', 'Client Email', 'Document Name', 'Sent Date', 'Status', 'Last Opened', 'Signed Date'];
+    const rows = contracts.map((contract) => [
+      contract._id,
+      contract.clientName,
+      contract.clientEmail,
+      contract.documentName,
+      new Date(contract.sentDate || contract.createdAt).toISOString(),
+      contract.status,
+      contract.lastOpened ? new Date(contract.lastOpened).toISOString() : '',
+      contract.signedDate ? new Date(contract.signedDate).toISOString() : ''
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'soas-contracts.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-1 flex-col gap-3 sm:flex-row">
+          <input
+            value={search}
+            onChange={(event) => {
+              setPagination((current) => ({ ...current, page: 1 }));
+              setSearch(event.target.value);
+            }}
+            placeholder="Search client or email"
+            className="min-h-10 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-brand-500"
+          />
+          <select
+            value={status}
+            onChange={(event) => {
+              setPagination((current) => ({ ...current, page: 1 }));
+              setStatus(event.target.value);
+            }}
+            className="min-h-10 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-brand-500"
+          >
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="viewed">Viewed</option>
+            <option value="signed">Signed</option>
+            <option value="expired">Expired</option>
+            <option value="revoked">Revoked</option>
+          </select>
+          <select
+            value={pagination.limit}
+            onChange={(event) => setPagination((current) => ({ ...current, page: 1, limit: Number(event.target.value) }))}
+            className="min-h-10 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-brand-500"
+          >
+            <option value="10">10 per page</option>
+            <option value="25">25 per page</option>
+            <option value="50">50 per page</option>
+          </select>
+        </div>
+        <button onClick={exportCsv} className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <Download size={16} />
+          CSV
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="p-6">
+          <LoadingSpinner label="Loading contracts" />
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Contract ID</th>
+                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Document</th>
+                <th className="px-4 py-3">Sent</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Last opened</th>
+                <th className="px-4 py-3">Signed</th>
+                <th className="px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {contracts.map((contract) => (
+                <tr key={contract._id}>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{contract._id.slice(-8)}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-ink">{contract.clientName}</p>
+                    <p className="text-xs text-slate-500">{contract.clientEmail}</p>
+                  </td>
+                  <td className="px-4 py-3">{contract.documentName}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{new Date(contract.sentDate || contract.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusClasses[contract.status] || statusClasses.pending}`}>{contract.status}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">{contract.lastOpened ? new Date(contract.lastOpened).toLocaleDateString() : '—'}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{contract.signedDate ? new Date(contract.signedDate).toLocaleDateString() : '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setSelected(contract)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100" title="View details">
+                        <Eye size={16} />
+                      </button>
+                      <button onClick={() => action(`/api/admin/contracts/${contract._id}/resend`)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100" title="Resend email">
+                        <RefreshCw size={16} />
+                      </button>
+                      <button onClick={() => action(`/api/admin/contracts/${contract._id}/revoke`, 'DELETE')} className="rounded-md p-2 text-rose-600 hover:bg-rose-50" title="Revoke token">
+                        <ShieldOff size={16} />
+                      </button>
+                      {contract.signedPdfUrl && (
+                        <a href={contract.signedPdfUrl} className="rounded-md p-2 text-emerald-700 hover:bg-emerald-50" title="Download signed PDF">
+                          <Download size={16} />
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!contracts.length && <p className="p-6 text-sm text-slate-500">No contracts found.</p>}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between border-t border-slate-200 p-4 text-sm text-slate-500">
+        <span>
+          Page {pagination.page} of {pagination.pages}
+        </span>
+        <div className="flex gap-2">
+          <button disabled={pagination.page <= 1} onClick={() => setPagination((current) => ({ ...current, page: current.page - 1 }))} className="rounded-md border px-3 py-1 disabled:opacity-50">
+            Previous
+          </button>
+          <button disabled={pagination.page >= pagination.pages} onClick={() => setPagination((current) => ({ ...current, page: current.page + 1 }))} className="rounded-md border px-3 py-1 disabled:opacity-50">
+            Next
+          </button>
+        </div>
+      </div>
+      <ContractDetailsModal contract={selected} open={Boolean(selected)} onClose={() => setSelected(null)} />
+    </div>
+  );
+}

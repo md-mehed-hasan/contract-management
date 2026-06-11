@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, unauthorized } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
 import Contract from '@/lib/models/Contract';
 
 export async function GET(request) {
-  const auth = requireAdmin(request);
-  if (auth) return auth;
+  const session = await requireAdmin();
+  if (!session) return unauthorized();
+  const userId = session.user.id;
 
   await connectDB();
   
   // Run update asynchronously in background to optimize response time
   Contract.updateMany(
-    { status: { $in: ['pending', 'viewed'] }, expiryDate: { $lt: new Date() } },
+    { userId, status: { $in: ['pending', 'viewed'] }, expiryDate: { $lt: new Date() } },
     { status: 'expired' }
   ).catch((err) => console.error('Failed to auto-expire contracts:', err));
 
@@ -22,7 +23,7 @@ export async function GET(request) {
   const limit = Math.min(Math.max(Number(searchParams.get('limit') || 10), 1), 50);
   const status = searchParams.get('status');
   const search = searchParams.get('search');
-  const query = {};
+  const query = { userId };
 
   if (status && status !== 'all') query.status = status;
   if (search) {

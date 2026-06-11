@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, unauthorized } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
 import Contract from '@/lib/models/Contract';
 import Template from '@/lib/models/Template';
@@ -11,13 +11,14 @@ import { defaultExpiryDate, formatDate } from '@/utils/dateHelpers';
 import { generateToken } from '@/utils/generateToken';
 
 export async function POST(request) {
-  const auth = requireAdmin(request);
-  if (auth) return auth;
+  const session = await requireAdmin();
+  if (!session) return unauthorized();
+  const userId = session.user.id;
 
   try {
     await connectDB();
     const body = sendContractSchema.parse(await request.json());
-    const source = await Template.findById(body.templateId);
+    const source = await Template.findOne({ _id: body.templateId, userId });
 
     if (!source) {
       return NextResponse.json({ success: false, message: 'Selected template was not found' }, { status: 404 });
@@ -27,6 +28,7 @@ export async function POST(request) {
     const expiryDate = body.expiryDate ? new Date(body.expiryDate) : defaultExpiryDate();
     const documentType = source.templateType;
     const contract = await Contract.create({
+      userId,
       token,
       documentName: source.name,
       documentType,
